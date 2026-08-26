@@ -1,6 +1,6 @@
 module github.com/vphpersson/gmail_watch_refresh
 
-go 1.26
+go 1.27
 
 require (
 	github.com/Motmedel/utils_go v0.0.466

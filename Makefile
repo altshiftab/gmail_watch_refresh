@@ -20,7 +20,7 @@ sbom:
 
 service-build:
 	@echo "Building..."
-	GOEXPERIMENT=jsonv2 go build -o ../service
+	go build -o ../service
 
 build: service-build sbom
 
