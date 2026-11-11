@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := all
 
-.PHONY: all update build sbom service-build publish-build publish
+.PHONY: all update build sbom sbom-image service-build publish-build publish
 
 ENV ?= prod
 
@@ -11,16 +11,27 @@ ifneq (,$(wildcard $(CNF_FILE)))
     export $(shell sed 's/=.*//' $(CNF_FILE))
 endif
 
+SERVICE_NAME ?= gmail-watch-refresh
+IMAGE ?= europe-north2-docker.pkg.dev/$(GCP_PROJECT_ID)/images/$(SERVICE_NAME):latest
+
 update:
 	gm
 
-sbom:
-	@echo "Generating SBOM..."
-	sbom -go go.sum -docker Dockerfile -output sbom.json
-
 service-build:
 	@echo "Building..."
-	go build -o ../service
+	go build -o service
+
+SBOM_FLAGS = --dockerfile Dockerfile --output sbom.json
+
+# Follows service-build, because it reads the binary.
+sbom: service-build
+	@echo "Generating SBOM..."
+	go tool sbom --go-binary service $(SBOM_FLAGS)
+
+# Describes the image, reading the binary inside it; this is what publishing attaches.
+sbom-image: publish-build
+	@echo "Generating SBOM of the image..."
+	go tool sbom --image $(SERVICE_NAME) $(SBOM_FLAGS)
 
 build: service-build sbom
 
@@ -28,9 +39,9 @@ all: update build
 
 publish-build:
 	@echo "Building for publish..."
-	podman build . --tag gmail-watch-refresh
+	podman build . --pull=newer --tag $(SERVICE_NAME)
 
-publish: publish-build sbom
+publish: publish-build sbom-image
 	@echo "Publishing..."
-	podman tag gmail-watch-refresh europe-north2-docker.pkg.dev/$(GCP_PROJECT_ID)/images/gmail-watch-refresh:latest && podman push europe-north2-docker.pkg.dev/$(GCP_PROJECT_ID)/images/gmail-watch-refresh:latest
-	cosign attach sbom --sbom sbom.json europe-north2-docker.pkg.dev/$(GCP_PROJECT_ID)/images/gmail-watch-refresh:latest
+	podman tag $(SERVICE_NAME) $(IMAGE) && podman push $(IMAGE)
+	cosign attach sbom --sbom sbom.json $(IMAGE)
