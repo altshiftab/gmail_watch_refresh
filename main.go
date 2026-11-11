@@ -6,34 +6,34 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/Motmedel/utils_go/pkg/cloud/gws/gmail"
-	"github.com/Motmedel/utils_go/pkg/cloud/gws/gmail/gmail_config"
-	"github.com/Motmedel/utils_go/pkg/cloud/gws/gmail/types/watch_request"
-	motmedelEnv "github.com/Motmedel/utils_go/pkg/env"
-	motmedelErrors "github.com/Motmedel/utils_go/pkg/errors"
-	"github.com/Motmedel/utils_go/pkg/errors/types/nil_error"
-	"github.com/Motmedel/utils_go/pkg/http/types/fetch_config"
-	"github.com/Motmedel/utils_go/pkg/oauth2/types/config"
-	"github.com/Motmedel/utils_go/pkg/oauth2/types/endpoint"
-	"github.com/Motmedel/utils_go/pkg/oauth2/types/token"
-
-	gcpUtilsLogger "github.com/altshiftab/gcp_utils/pkg/types/logger"
+	"github.com/altshiftab/utils_go/pkg/cloud/gws/gmail"
+	"github.com/altshiftab/utils_go/pkg/cloud/gws/gmail/gmail_config"
+	"github.com/altshiftab/utils_go/pkg/cloud/gws/gmail/types/watch_request"
+	altshiftEnv "github.com/altshiftab/utils_go/pkg/env"
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
+	"github.com/altshiftab/utils_go/pkg/errors/types/nil_error"
+	"github.com/altshiftab/utils_go/pkg/http/types/fetch_config"
+	altshiftHttpLogger "github.com/altshiftab/utils_go/pkg/log/http_logger"
+	"github.com/altshiftab/utils_go/pkg/log/http_logger/http_logger_config"
+	"github.com/altshiftab/utils_go/pkg/oauth2/types/config"
+	"github.com/altshiftab/utils_go/pkg/oauth2/types/endpoint"
+	"github.com/altshiftab/utils_go/pkg/oauth2/types/token"
 )
 
 const tokenUrl = "https://oauth2.googleapis.com/token"
 
 func main() {
-	logger := gcpUtilsLogger.New()
+	logger := altshiftHttpLogger.New(http_logger_config.WithGcp(true))
 	slog.SetDefault(logger.Logger)
 
-	topicName := motmedelEnv.ReadEnvFatal("TOPIC_NAME")
-	clientId := motmedelEnv.ReadEnvFatal("CLIENT_ID")
-	clientSecret := motmedelEnv.ReadEnvFatal("CLIENT_SECRET")
-	refreshToken := motmedelEnv.ReadEnvFatal("REFRESH_TOKEN")
-	userId := motmedelEnv.ReadEnvFatal("USER_ID")
+	topicName := altshiftEnv.ReadEnvFatal("TOPIC_NAME")
+	clientId := altshiftEnv.ReadEnvFatal("CLIENT_ID")
+	clientSecret := altshiftEnv.ReadEnvFatal("CLIENT_SECRET")
+	refreshToken := altshiftEnv.ReadEnvFatal("REFRESH_TOKEN")
+	userId := altshiftEnv.ReadEnvFatal("USER_ID")
 
 	var labelIds []string
-	labelIdsString := motmedelEnv.GetEnvWithDefault("LABEL_IDS", "INBOX,SENT")
+	labelIdsString := altshiftEnv.GetEnvWithDefault("LABEL_IDS", "INBOX,SENT")
 	if labelIdsString != "" {
 		for _, id := range strings.Split(labelIdsString, ",") {
 			if trimmed := strings.TrimSpace(id); trimmed != "" {
@@ -62,7 +62,7 @@ func main() {
 		&watch_request.WatchRequest{
 			TopicName:         topicName,
 			LabelIds:          labelIds,
-			LabelFilterAction: motmedelEnv.GetEnvWithDefault("LABEL_FILTER_ACTION", "include"),
+			LabelFilterAction: altshiftEnv.GetEnvWithDefault("LABEL_FILTER_ACTION", "include"),
 		},
 	)
 	if err != nil {
@@ -74,7 +74,7 @@ func main() {
 	if response == nil {
 		logger.FatalWithExitingMessage(
 			"The response is nil.",
-			motmedelErrors.NewWithTrace(nil_error.New("response")),
+			altshiftErrors.NewWithTrace(nil_error.New("response")),
 		)
 	}
 
