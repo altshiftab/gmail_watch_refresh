@@ -1,4 +1,4 @@
-module github.com/vphpersson/gmail_watch_refresh
+module github.com/altshiftab/gmail_watch_refresh
 
 go 1.27
 
