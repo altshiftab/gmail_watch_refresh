@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := all
 
-.PHONY: all update build sbom sbom-image service-build publish-build publish
+.PHONY: all update build sbom sbom-image service-build guard-release-versions publish-build publish
 
 ENV ?= prod
 
@@ -41,7 +41,17 @@ publish-build:
 	@echo "Building for publish..."
 	podman build . --pull=newer --tag $(SERVICE_NAME)
 
-publish: publish-build sbom-image
+# What is published is built from releases of my modules, never from a commit under test (a
+# pseudo-version): https://wiki.vvvp.se/?page=go-module-versions. GOWORK=off reads the module graph the
+# image is built from, and a failing go list fails the guard rather than passing it. A replaced module
+# is checked as what replaces it: a directory in the repo has no version, and a replace onto a
+# pseudo-version is caught.
+guard-release-versions:
+	@modules=$$(GOWORK=off go list -m -f '{{with .Replace}}{{.Path}} {{.Version}}{{else}}{{.Path}} {{.Version}}{{end}}' all) && \
+	test_versions=$$(printf '%s\n' "$$modules" | grep -E '^github\.com/(Motmedel|altshiftab|vphpersson|intilgroup)/[^ ]* v[^ ]*[0-9]{14}-[0-9a-f]{12}$$' || true) && \
+	if [ -n "$$test_versions" ]; then printf '[deploy] Built from test versions of my modules; release them first:\n%s\n' "$$test_versions" >&2; exit 1; fi
+
+publish: guard-release-versions publish-build sbom-image
 	@echo "Publishing..."
 	podman tag $(SERVICE_NAME) $(IMAGE) && podman push $(IMAGE)
 	cosign attach sbom --sbom sbom.json $(IMAGE)
